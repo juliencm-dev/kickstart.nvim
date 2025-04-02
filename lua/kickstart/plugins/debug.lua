@@ -23,7 +23,10 @@ return {
 
     -- Add your own debuggers here
     'leoluz/nvim-dap-go',
+    'mfussenegger/nvim-dap-python',
+    'mfussenegger/nvim-jdtls',
   },
+  ft = { 'java' },
   keys = {
     -- Basic debugging keymaps, feel free to change to your liking!
     {
@@ -76,10 +79,27 @@ return {
       end,
       desc = 'Debug: See last session result.',
     },
+    {
+      '<F9>',
+      function()
+        require('dap').disconnect()
+      end,
+      desc = 'Debug: Disconnect',
+    },
+    {
+      '<F8>',
+      function()
+        require('dap').terminate()
+      end,
+      desc = 'Debug: Terminate',
+    },
   },
   config = function()
     local dap = require 'dap'
     local dapui = require 'dapui'
+    local dap_python = require 'dap-python'
+
+    require('dap-java').setup()
 
     require('mason-nvim-dap').setup {
       -- Makes a best effort to setup the various debuggers with
@@ -95,8 +115,75 @@ return {
       ensure_installed = {
         -- Update this to ensure that you have the debuggers for the langs you want
         'delve',
+        'debugpy',
+        'java',
       },
     }
+
+    -- Java Debug
+    local project_name = vim.fn.fnamemodify(vim.fn.getcwd(), ':p:h:t') -- Extracts project folder name
+    local workspace_root = vim.fn.expand '~/.cache/jdtls-workspaces/' -- Base workspace directory
+    local workspace_dir = workspace_root .. project_name -- Unique workspace per project
+
+    local java_config = {
+      -- The command that starts the language server
+      -- See: https://github.com/eclipse/eclipse.jdt.ls#running-from-the-command-line
+      cmd = {
+
+        '/usr/lib/jvm/java-23-openjdk/bin/java', -- or '/path/to/java17_or_newer/bin/java'
+
+        '-Declipse.application=org.eclipse.jdt.ls.core.id1',
+        '-Dosgi.bundles.defaultStartLevel=4',
+        '-Declipse.product=org.eclipse.jdt.ls.core.product',
+        '-Dlog.protocol=true',
+        '-Dlog.level=ALL',
+        '-Xmx1g',
+        '--add-modules=ALL-SYSTEM',
+        '--add-opens',
+        'java.base/java.util=ALL-UNNAMED',
+        '--add-opens',
+        'java.base/java.lang=ALL-UNNAMED',
+
+        -- 💀
+        '-jar',
+        '/home/juliencm-dev/.local/share/nvim/mason/packages/jdtls/plugins/org.eclipse.jdt.ls.core_1.44.0.202501221502.jar',
+
+        -- 💀
+        '-configuration',
+        '/home/juliencm-dev/.local/share/nvim/mason/packages/jdtls/config_linux',
+
+        -- 💀
+        -- See `data directory configuration` section in the README
+        '-data',
+        workspace_dir,
+      },
+
+      -- 💀
+      -- This is the default if not provided, you can remove it. Or adjust as needed.
+      -- One dedicated LSP server & client will be started per unique root_dir
+      root_dir = require('jdtls.setup').find_root { '.git', 'mvnw', 'gradlew' },
+
+      -- Here you can configure eclipse.jdt.ls specific settings
+      -- See https://github.com/eclipse/eclipse.jdt.ls/wiki/Running-the-JAVA-LS-server-from-the-command-line#initialize-request
+      -- for a list of options
+      settings = {
+        java = {},
+      },
+
+      -- Language server `initializationOptions`
+      -- You need to extend the `bundles` with paths to jar files
+      -- if you want to use additional eclipse.jdt.ls plugins.
+      --
+      -- See https://github.com/mfussenegger/nvim-jdtls#java-debug-installation
+      --
+      -- If you don't plan on using the debugger or other eclipse.jdt.ls plugins you can remove this
+      init_options = {
+        bundles = {},
+      },
+    }
+    -- This starts a new client & server,
+    -- or attaches to an existing client & server depending on the `root_dir`.
+    require('jdtls').start_or_attach(java_config)
 
     -- Dap UI setup
     -- For more information, see |:help nvim-dap-ui|
@@ -131,6 +218,59 @@ return {
     --   local hl = (type == 'Stopped') and 'DapStop' or 'DapBreak'
     --   vim.fn.sign_define(tp, { text = icon, texthl = hl, numhl = hl })
     -- end
+    --
+    -- Configure Python DAP
+    local function get_python_path()
+      -- Use virtual environment if available
+      local venv_python = os.getenv 'VIRTUAL_ENV'
+      if venv_python then
+        return venv_python .. '/bin/python'
+      end
+      -- Otherwise, use system Python
+      return '/usr/bin/python3'
+    end
+
+    dap_python.setup(get_python_path())
+
+    -- Local debugging (for normal Python scripts and venvs)
+    dap.adapters.python_local = {
+      type = 'executable',
+      command = get_python_path(),
+      args = { '-Xfrozen_modules=off', '-m', 'debugpy.adapter' },
+    }
+
+    -- Docker container debugging (for FastAPI running in Docker)
+    dap.adapters.python_docker = {
+      type = 'server',
+      host = '127.0.0.1', -- Attach to forwarded Docker debug port
+      port = 5678,
+    }
+
+    -- Define multiple debugging configurations
+    dap.configurations.python = {
+      {
+        type = 'python_local', -- Use local Python adapter
+        request = 'launch',
+        name = 'Launch Local Debugger',
+        program = '${file}', -- Run the currently opened file
+        pythonPath = get_python_path, -- Dynamically selects system or venv Python
+      },
+      {
+        type = 'python_docker', -- Use Docker adapter
+        request = 'attach',
+        name = 'Attach to FastAPI (Docker)',
+        connect = {
+          host = '127.0.0.1',
+          port = 5678,
+        },
+        pathMappings = {
+          {
+            localRoot = vim.fn.getcwd(), -- Your local project directory
+            remoteRoot = '/code', -- Path inside the container (Docker WORKDIR)
+          },
+        },
+      },
+    }
 
     dap.listeners.after.event_initialized['dapui_config'] = dapui.open
     dap.listeners.before.event_terminated['dapui_config'] = dapui.close

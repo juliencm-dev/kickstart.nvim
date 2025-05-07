@@ -162,6 +162,8 @@ vim.opt.scrolloff = 10
 
 -- Clear highlights on search when pressing <Esc> in normal mode
 --  See `:help hlsearch`
+
+vim.keymap.set('n', '-', '<CMD>Oil<CR>', { desc = 'Open parent directory' })
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
 
 -- [[ Pane Navigation ]]
@@ -639,7 +641,6 @@ require('lazy').setup({
           capabilities = capabilities,
         },
         rust_analyzer = {},
-        jdtls = {},
         ts_ls = {},
         emmet_ls = {},
         clojure_lsp = {},

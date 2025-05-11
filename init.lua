@@ -424,6 +424,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
       vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+
       vim.keymap.set('n', '<leader>hm', require('harpoon.mark').add_file, { desc = '[H]arpoon [M]ark' })
       vim.keymap.set('n', '<leader>hq', require('harpoon.ui').toggle_quick_menu, { desc = '[H]arpoon [Q]uick menu' })
       vim.keymap.set('n', '<leader>hn', require('harpoon.ui').nav_next, { desc = '[H]arpoon [N]ext' })

@@ -3,10 +3,10 @@
 --
 -- See the kickstart.nvim README for more information
 return {
-  {
-    'supermaven-inc/supermaven-nvim',
-    config = function()
-      require('supermaven-nvim').setup {}
-    end,
-  },
-  }
+  -- {
+  --   'supermaven-inc/supermaven-nvim',
+  --   config = function()
+  --     require('supermaven-nvim').setup {}
+  --   end,
+  -- },
+}

@@ -744,9 +744,6 @@ require('lazy').setup({
     opts = {
       notify_on_error = false,
       format_on_save = function(bufnr)
-        -- Disable "format_on_save lsp_fallback" for languages that don't
-        -- have a well standardized coding style. You can add additional
-        -- languages here or re-enable it for the disabled ones.
         local disable_filetypes = { c = true, cpp = true }
         local lsp_format_opt
         if disable_filetypes[vim.bo[bufnr].filetype] then
@@ -759,19 +756,35 @@ require('lazy').setup({
           lsp_format = lsp_format_opt,
         }
       end,
+
+      -- 📌 Prettier + Prettierd setup
+      formatters = {
+        prettierd = {
+          -- Make it always search from project root so it finds your root .prettierrc
+          cwd = function(ctx)
+            return vim.fs.dirname(vim.fs.find({ '.prettierrc', 'prettier.config.js', 'package.json', '.git' }, {
+              upward = true,
+              path = ctx.filename,
+            })[1])
+          end,
+        },
+        prettier = {
+          args = { '--stdin-filepath', '$FILENAME' },
+        },
+      },
+
       formatters_by_ft = {
         lua = { 'stylua' },
-        -- Conform can also run multiple formatters sequentially
         python = { 'ruff_format', 'isort', 'black' },
-        javascript = { 'prettier', stop_after_first = true },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
+        typescript = { 'prettierd', 'prettier', stop_after_first = true },
+        javascriptreact = { 'prettierd', 'prettier', stop_after_first = true },
+        typescriptreact = { 'prettierd', 'prettier', stop_after_first = true },
         go = { 'goimports', 'gofmt' },
         java = { 'google_java_format' },
-        -- Use the "*" filetype to run formatters on all filetypes.
+        cpp = { 'clang-format' },
         ['*'] = { 'codespell' },
         ['_'] = { 'trim_whitespace' },
-        -- Use the "_" filetype to run formatters on filetypes that don't
-        -- have other formatters configured.
-        -- You can use 'stop_after_first' to run the first available formatter from the list
       },
     },
   },
@@ -952,17 +965,33 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'java' },
-      -- Autoinstall languages that are not installed
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'java',
+        'javascript',
+        'typescript',
+        'tsx',
+        'json',
+      },
       auto_install = true,
       highlight = {
         enable = true,
-        -- Some languages depend on vim's regex highlighting system (such as Ruby) for indent rules.
-        --  If you are experiencing weird indenting issues, add the language to
-        --  the list of additional_vim_regex_highlighting and disabled languages for indent.
         additional_vim_regex_highlighting = { 'ruby' },
       },
-      indent = { enable = true, disable = { 'ruby' } },
+      indent = {
+        enable = true,
+        disable = { 'ruby' },
+      },
     },
     -- There are additional nvim-treesitter modules that you can use to interact
     -- with nvim-treesitter. You should go explore a few and see what interests you:
@@ -1020,5 +1049,6 @@ require('lazy').setup({
   },
 })
 
+require 'custom.autocmds'
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et

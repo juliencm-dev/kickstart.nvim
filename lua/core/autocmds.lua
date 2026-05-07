@@ -1,3 +1,14 @@
+-- [[ Autocommands ]]
+
+-- Highlight when yanking (copying) text
+vim.api.nvim_create_autocmd('TextYankPost', {
+  desc = 'Highlight when yanking (copying) text',
+  group = vim.api.nvim_create_augroup('kickstart-highlight-yank', { clear = true }),
+  callback = function()
+    vim.hl.on_yank()
+  end,
+})
+
 -- Prettier indent sync for JS/TS
 vim.api.nvim_create_autocmd('FileType', {
   pattern = { 'javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'tsx' },
@@ -24,7 +35,7 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
--- Force C / C++ / header files to use 2 spaces instead of 8
+-- Force C / C++ / header files to use specific indent
 vim.api.nvim_create_autocmd('FileType', {
   pattern = { 'c', 'cpp', 'h' },
   callback = function()
